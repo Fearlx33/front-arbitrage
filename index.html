@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Viridis V4.0</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.dataTables.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --v-purple: #440154;
+            --v-blue: #31688e;
+            --v-teal: #35b779;
+            --v-green: #6ece58;
+            --v-yellow: #fde725;
+            --bg-body: #0a0a0a;
+            --bg-card: #141414;
+            --bg-input: #1f1f1f;
+            --border-color: #333;
+        }
+
+        body { 
+            background-color: var(--bg-body); 
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif; 
+            font-size: 0.9rem;
+        }
+
+        .filters-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: 3px solid var(--v-blue);
+            border-radius: 8px;
+            padding: 10px 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        .filters-toolbar {
+            display: flex; align-items: center; gap: 15px; overflow-x: auto; white-space: nowrap; padding-bottom: 2px;
+        }
+        .filters-toolbar::-webkit-scrollbar { height: 4px; }
+        .filters-toolbar::-webkit-scrollbar-thumb { background: var(--v-blue); border-radius: 2px; }
+
+        .compact-input-group { display: flex; align-items: center; gap: 5px; }
+        .compact-input-group label { color: var(--v-green); font-weight: 700; font-size: 0.75rem; text-transform: uppercase; margin-right: 5px; }
+        .compact-input-group input { background-color: var(--bg-input); border: 1px solid var(--border-color); color: white; font-size: 0.85rem; width: 80px !important; text-align: center; }
+        .compact-input-group input:focus { border-color: var(--v-teal); box-shadow: none; }
+        
+        .sound-controls {
+            display: flex; align-items: center; gap: 10px; 
+            background: rgba(255,255,255,0.05); 
+            padding: 4px 15px; border-radius: 20px; border: 1px solid #444;
+        }
+        
+        .volume-slider {
+            width: 80px; height: 4px; 
+            -webkit-appearance: none; appearance: none;
+            background: #444; border-radius: 2px; outline: none;
+        }
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 14px; height: 14px; 
+            background: var(--v-yellow); border-radius: 50%; cursor: pointer;
+        }
+        .volume-slider::-moz-range-thumb {
+            width: 14px; height: 14px; 
+            background: var(--v-yellow); border: none; border-radius: 50%; cursor: pointer;
+        }
+        
+        .btn-test-sound {
+            background: transparent; border: 1px solid var(--v-green); color: var(--v-green);
+            font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-test-sound:hover { background: var(--v-green); color: #000; }
+
+        .separator { color: #555; font-weight: bold; }
+
+        #apply-filters { background: linear-gradient(90deg, var(--v-blue), var(--v-teal)); border: none; color: white; font-weight: 600; white-space: nowrap; }
+        #apply-filters:hover { opacity: 0.9; }
+
+        #live-alerts-area {
+            display: block; margin-bottom: 20px; background: #0d2b25; 
+            border: 1px solid var(--v-teal); border-left: 5px solid var(--v-green);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;
+        }
+        .alerts-scroll-container { display: flex; overflow-x: auto; gap: 15px; padding-bottom: 5px; align-items: center; min-height: 80px; }
+        .alerts-scroll-container::-webkit-scrollbar { height: 6px; }
+        .alerts-scroll-container::-webkit-scrollbar-thumb { background: var(--v-teal); border-radius: 3px; }
+
+        .alert-card { 
+            min-width: 220px; background: #000; border-radius: 6px; padding: 10px; flex-shrink: 0; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 1px solid #333; position: relative;
+            transition: opacity 0.3s;
+        }
+        .alert-card.type-cc { border-left: 5px solid var(--v-green); border-color: var(--v-green); }
+        .alert-card.type-cc .badge-type { background-color: var(--v-green); color: black; }
+        .alert-card.type-ff { border-left: 5px solid var(--v-purple); border-color: var(--v-purple); }
+        .alert-card.type-ff .badge-type { background-color: var(--v-purple); color: white; }
+        .alert-card.cooling-down { opacity: 0.7; border-left-color: #888; border-color: #444; }
+
+        .alert-score { font-size: 1.4rem; font-weight: 900; color: var(--v-yellow); }
+        .spread-good { color: var(--v-green); font-weight: bold; }
+        .empty-alerts-msg { color: #6c757d; font-style: italic; width: 100%; text-align: center; }
+
+        .btn-alert-action { background-color: var(--v-teal); color: #000; font-weight: bold; border: none; width: 100%; border-radius: 4px; margin-top: 5px; }
+        .btn-alert-action:hover { background-color: var(--v-green); }
+
+        .card-table-container { background: var(--bg-card); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        .header-cc { background: linear-gradient(135deg, var(--v-purple) 0%, var(--v-blue) 100%); padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .header-ff { background: linear-gradient(135deg, var(--v-blue) 0%, var(--v-teal) 100%); padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { color: white; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .header-search-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 4px 15px; font-size: 0.85rem; width: 200px; outline: none; transition: all 0.3s; }
+        .header-search-input:focus { background: rgba(0,0,0,0.5); border-color: var(--v-yellow); width: 250px; }
+        .header-search-input::placeholder { color: rgba(255,255,255,0.5); }
+
+        .nav-tabs { border-bottom: 1px solid var(--border-color); }
+        .nav-tabs .nav-link { color: #888; border: none; transition: 0.3s; }
+        .nav-tabs .nav-link:hover { color: var(--v-teal); }
+        .nav-tabs .nav-link.active { background-color: transparent; color: var(--v-yellow); border-bottom: 2px solid var(--v-yellow); }
+
+        table.dataTable tbody tr { background-color: var(--bg-card) !important; color: #ccc; }
+        table.dataTable tbody tr:hover { background-color: #222 !important; }
+        .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_length { display: none; }
+        
+        .text-danger { color: #ff5252 !important; font-weight: bold; } 
+        .status-liberado { color: #000; background: var(--v-green); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .status-suspenso { color: #fff; background: #b91c1c; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .action-icon { cursor: pointer; font-size: 1.1rem; margin: 0 3px; }
+        .icon-fav { color: #444; } .icon-fav.active { color: var(--v-yellow); }
+        .icon-trash { color: #444; } .icon-trash:hover { color: #ef4444; }
+        .btn-open-sm { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--v-teal); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .btn-open-sm:hover { background: var(--v-teal); color: #000; }
+        .icon-mute { color: #444; }
+        .icon-mute.active { color: #f59e0b; }
+        .icon-mute:hover  { color: #f59e0b; }
+        .spread-max { color: var(--v-yellow); font-weight: bold; }
+        .alert-count-badge { background: var(--v-blue); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); }
+
+        /* ── Indicadores de status das exchanges ── */
+        .exchange-status-bar {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 4px 10px; font-size: 0.75rem;
+        }
+        .ex-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 12px; font-weight: 700;
+            font-size: 0.7rem; letter-spacing: 0.5px; white-space: nowrap;
+            transition: all 0.3s;
+        }
+        .ex-badge.ok       { background: rgba(110,206,88,0.15); color: var(--v-green);  border: 1px solid var(--v-green); }
+        .ex-badge.warn     { background: rgba(253,231,37,0.15); color: var(--v-yellow); border: 1px solid var(--v-yellow);
+                             animation: pulse-warn 1s infinite; }
+        .ex-badge.error    { background: rgba(185,28,28,0.15);  color: #ff5252;         border: 1px solid #ff5252;
+                             animation: pulse-warn 0.6s infinite; }
+        .ex-badge.unknown  { background: rgba(50,50,50,0.5);    color: #666;            border: 1px solid #444; }
+        @keyframes pulse-warn {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.5; }
+        }
+        .ex-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    
+    <div class="d-flex justify-content-between align-items-center py-3">
+        <h4 class="mb-0 fw-bold" style="color: var(--v-green)">
+            <i class="ri-radar-line"></i> MONITOR <span style="color: var(--v-purple)">VIRIDIS</span>
+        </h4>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Indicadores de status por exchange -->
+            <div class="exchange-status-bar" id="exchange-status-bar">
+                <span style="color:#666; font-size:0.7rem; font-weight:700;">STREAMS</span>
+                <span class="ex-badge unknown" id="ex-bingx-spot"><span class="ex-dot"></span>BINGX SPOT</span>
+                <span class="ex-badge unknown" id="ex-bingx-fut"><span class="ex-dot"></span>BINGX FUT</span>
+                <span class="ex-badge unknown" id="ex-mexc-spot"><span class="ex-dot"></span>MEXC SPOT</span>
+                <span class="ex-badge unknown" id="ex-mexc-fut"><span class="ex-dot"></span>MEXC FUT</span>
+            </div>
+            <button id="reset-memory-btn" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" title="Limpar histórico do backend">
+                <i class="ri-delete-bin-2-line"></i> <span class="d-none d-md-inline">Limpar Memória</span>
+            </button>
+            <div class="badge bg-dark border border-secondary p-2 text-white shadow-sm">
+                <span id="header-status">🔌 Conectando...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters-container">
+        <div class="filters-toolbar">
+            <div class="compact-input-group">
+                <label>Spread%</label>
+                <input type="number" step="0.01" id="min_spread" class="form-control form-control-sm" placeholder="Min">
+                <span class="separator">-</span>
+                <input type="number" step="1" id="max_spread" class="form-control form-control-sm" placeholder="Max">
+            </div>
+            <div class="compact-input-group">
+                <label>Vol$</label>
+                <input type="number" id="min_volume" class="form-control form-control-sm" placeholder="Min">
+                <span class="separator">-</span>
+                <input type="number" id="max_volume" class="form-control form-control-sm" placeholder="Max" style="width: 90px !important;">
+            </div>
+            <div class="compact-input-group">
+                <label style="color: var(--v-yellow)">Score</label>
+                <input type="number" step="0.01" id="min_score" class="form-control form-control-sm" style="border-color: var(--v-yellow)" placeholder="Min">
+            </div>
+            <div class="sound-controls" title="Volume do Alerta">
+                <i class="ri-music-2-fill text-muted"></i>
+                <input type="range" id="volume-control" class="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                <button id="test-sound-btn" class="btn-test-sound">🔊 Testar Som</button>
+            </div>
+            <button id="apply-filters" class="btn btn-sm px-4 ms-auto">
+                <i class="ri-equalizer-fill"></i> Aplicar
+            </button>
+            <span id="filter-status" class="small"></span>
+        </div>
+    </div>
+
+    <div id="live-alerts-area">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="color: var(--v-green); font-weight: 800; letter-spacing: 1px;">
+                <i class="ri-flashlight-fill text-warning"></i> OPORTUNIDADES (Score > <span id="alert-limit-display"></span>%)
+            </span>
+            <span class="badge bg-black border border-success">LIVE</span>
+        </div>
+        <div class="alerts-scroll-container" id="alerts-container">
+            <div class="empty-alerts-msg">Aguardando oportunidades...</div>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="filterTabs">
+        <li class="nav-item"><a class="nav-link active" onclick="setTab('all')" id="tab-all"><i class="ri-list-check"></i> Geral</a></li>
+        <li class="nav-item"><a class="nav-link" onclick="setTab('fav')" id="tab-fav"><i class="ri-star-fill"></i> Favoritos</a></li>
+        <li class="nav-item"><a class="nav-link" onclick="setTab('hidden')" id="tab-hidden"><i class="ri-delete-bin-5-line"></i> Lixeira</a></li>
+    </ul>
+
+    <div class="card-table-container">
+        <div class="header-cc">
+            <div class="header-title"><i class="ri-coin-line"></i> Cash & Carry (Spot x Fut)</div>
+            <input type="text" id="search-cc" class="header-search-input" placeholder="Buscar em C&C...">
+        </div>
+        <div class="p-0">
+            <table id="cc-table" class="display table table-dark table-hover table-sm" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Moeda</th><th>Compra</th><th>Venda</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Compra</th><th>Vol Venda</th><th>Saque</th><th class="text-center">Alertas 24h</th><th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card-table-container">
+        <div class="header-ff">
+            <div class="header-title"><i class="ri-swap-box-line"></i> Futuro x Futuro (Long x Short)</div>
+            <input type="text" id="search-ff" class="header-search-input" placeholder="Buscar em FxF...">
+        </div>
+        <div class="p-0">
+            <table id="ff-table" class="display table table-dark table-hover table-sm" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Moeda</th><th>Long</th><th>Short</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Long</th><th>Vol Short</th><th class="text-center">Alertas 24h</th><th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="py-3 text-center text-muted" style="font-size: 0.75rem;">
+        Monitor Arbitragem Viridis V4.0
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.0.7/js/dataTables.js"></script>
+
+<script>
+    // ─── CONFIG ───────────────────────────────────────────────────────────────
+    const BASE            = 'web-production-e65d.up.railway.app';
+    const API_DATA_URL    = `${BASE}/api/v1/arbitragem`;
+    const API_FILTERS_URL = `${BASE}/api/v1/filtros`;
+    const API_RESET_URL   = `${BASE}/api/v1/reset`;
+    const API_STATUS_URL  = `${BASE}/api/v1/status`;
+
+    const DEFAULT_FILTERS = {
+        min_spread: 0.01, max_spread: 100.0,
+        min_volume: 50000, max_volume: 10000000,
+        min_score: 3.0, alert_threshold: 10.0,
+        telegram_chat_id: ""
+    };
+
+    // ─── MAPEAMENTO DE CAMPOS (backend snake_case → frontend) ─────────────────
+    // CC fields
+    const cc = {
+        moeda:              op => op.moeda,
+        compra:             op => op.compra,
+        venda:              op => op.venda,
+        spread_entrada:     op => op.spread_entrada,
+        spread_max_entrada: op => op.spread_max_entrada,
+        spread_saida:       op => op.spread_saida,
+        spread_max_saida:   op => op.spread_max_saida,
+        vol_compra:         op => op.vol_compra,
+        vol_venda:          op => op.vol_venda,
+        status_saque:       op => op.status_saque,
+        score:              op => op.score,
+        alert_count:        op => op.alert_count,
+        qe10:               op => op.qe10,
+    };
+
+    // FF fields
+    const ff = {
+        moeda:              op => op.moeda,
+        long_ex:            op => op.long_ex,
+        short_ex:           op => op.short_ex,
+        spread_entrada:     op => op.spread_entrada,
+        spread_max_entrada: op => op.spread_max_entrada,
+        spread_saida:       op => op.spread_saida,
+        spread_max_saida:   op => op.spread_max_saida,
+        vol_long:           op => op.vol_long,
+        vol_short:          op => op.vol_short,
+        score:              op => op.score,
+        alert_count:        op => op.alert_count,
+        qe10:               op => op.qe10,
+    };
+
+    // ─── ESTADO ───────────────────────────────────────────────────────────────
+    let ccTable, ffTable;
+    let favorites    = JSON.parse(localStorage.getItem('arb_favorites'))  || [];
+    let hiddenItems  = JSON.parse(localStorage.getItem('arb_hidden'))     || [];
+    let mutedCoins   = JSON.parse(localStorage.getItem('arb_muted'))      || [];
+    let activeTab    = 'all';
+    let knownHighScores = new Set();
+
+    let alertsDisplayCache = {};
+    const ALERT_STICKY_TIME_MS = 5000;
+
+    const FILTERS_STORAGE_KEY = 'viridis_filters_cache';
+
+    // ─── FILTROS ──────────────────────────────────────────────────────────────
+    function loadFiltersFromCache() {
+        const cached = localStorage.getItem(FILTERS_STORAGE_KEY);
+        if (cached) {
+            try {
+                const f = JSON.parse(cached);
+                $('#min_spread').val(f.min_spread ?? DEFAULT_FILTERS.min_spread);
+                $('#max_spread').val(f.max_spread ?? DEFAULT_FILTERS.max_spread);
+                $('#min_volume').val(f.min_volume ?? DEFAULT_FILTERS.min_volume);
+                $('#max_volume').val(f.max_volume ?? DEFAULT_FILTERS.max_volume);
+                $('#min_score').val(f.min_score   ?? DEFAULT_FILTERS.min_score);
+                if (f.local_volume != null) $('#volume-control').val(f.local_volume);
+                return f;
+            } catch(e) { console.error("Cache inválido", e); }
+        }
+        $('#min_spread').val(DEFAULT_FILTERS.min_spread);
+        $('#max_spread').val(DEFAULT_FILTERS.max_spread);
+        $('#min_volume').val(DEFAULT_FILTERS.min_volume);
+        $('#max_volume').val(DEFAULT_FILTERS.max_volume);
+        $('#min_score').val(DEFAULT_FILTERS.min_score);
+        return DEFAULT_FILTERS;
+    }
+
+    function saveFiltersToCache() {
+        localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify({
+            min_spread:   $('#min_spread').val(),
+            max_spread:   $('#max_spread').val(),
+            min_volume:   $('#min_volume').val(),
+            max_volume:   $('#max_volume').val(),
+            min_score:    $('#min_score').val(),
+            local_volume: $('#volume-control').val(),
+        }));
+    }
+
+    async function sendFiltersToBackend() {
+        $('#filter-status').text('...');
+        $('#apply-filters').prop('disabled', true);
+        saveFiltersToCache();
+
+        const payload = {
+            min_spread:       parseFloat($('#min_spread').val()),
+            max_spread:       parseFloat($('#max_spread').val()),
+            min_volume:       parseInt($('#min_volume').val()),
+            max_volume:       parseInt($('#max_volume').val()),
+            min_score:        parseFloat($('#min_score').val()),
+            alert_threshold:  parseFloat(DEFAULT_FILTERS.alert_threshold),
+            telegram_chat_id: DEFAULT_FILTERS.telegram_chat_id,
+        };
+
+        try {
+            await fetch(API_FILTERS_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            $('#filter-status').html('<i class="ri-check-line text-success"></i>');
+            knownHighScores.clear();
+            fetchData();
+        } catch {
+            $('#filter-status').html('<i class="ri-error-warning-line text-danger"></i>');
+        }
+
+        $('#apply-filters').prop('disabled', false);
+        setTimeout(() => $('#filter-status').text(''), 3000);
+    }
+
+    async function resetMemory() {
+        if (!confirm("Tem certeza? Isso apagará o histórico.")) return;
+        try {
+            await fetch(API_RESET_URL, { method: 'POST' });
+            alert("Memória limpa!");
+            fetchData();
+        } catch(e) { alert("Erro de conexão."); }
+    }
+
+    // ─── ÁUDIO ────────────────────────────────────────────────────────────────
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, t, dur, vol) {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        o.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0, audioCtx.currentTime + t);
+        g.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t + dur);
+        o.start(audioCtx.currentTime + t);
+        o.stop(audioCtx.currentTime + t + dur + 0.1);
+    }
+
+    function playSoftLevelUp(v) {
+        initAudio();
+        const bv = v * 0.6;
+        playTone(523.25, 0,   0.6, bv);
+        playTone(659.25, 0.1, 0.6, bv);
+        playTone(783.99, 0.2, 0.8, bv);
+    }
+
+    // ─── TABS / FAVORITOS / LIXEIRA ───────────────────────────────────────────
+    function setTab(tab) {
+        activeTab = tab;
+        $('.nav-link').removeClass('active');
+        $(`#tab-${tab}`).addClass('active');
+        fetchData();
+    }
+
+    function toggleFavorite(coin) {
+        favorites = favorites.includes(coin)
+            ? favorites.filter(c => c !== coin)
+            : [...favorites, coin];
+        localStorage.setItem('arb_favorites', JSON.stringify(favorites));
+        fetchData();
+    }
+
+    function toggleMute(coin) {
+        mutedCoins = mutedCoins.includes(coin)
+            ? mutedCoins.filter(c => c !== coin)
+            : [...mutedCoins, coin];
+        localStorage.setItem('arb_muted', JSON.stringify(mutedCoins));
+        fetchData();
+    }
+
+    function toggleHide(coin) {
+        hiddenItems = hiddenItems.includes(coin)
+            ? hiddenItems.filter(c => c !== coin)
+            : [...hiddenItems, coin];
+        localStorage.setItem('arb_hidden', JSON.stringify(hiddenItems));
+        fetchData();
+    }
+
+    // ─── LINKS ────────────────────────────────────────────────────────────────
+    function getLink(exchange, coin, type) {
+        const pair = `${coin}_USDT`;
+        if (exchange === 'bingx')  return type === 'FUTURO' ? `https://swap.bingx.com/${coin}-USDT`            : `https://bingx.com/en-us/spot/${coin}USDT/`;
+        if (exchange === 'mexc')   return type === 'FUTURO' ? `https://futures.mexc.com/exchange/${pair}`       : `https://www.mexc.com/pt-BR/exchange/${pair}`;
+        if (exchange === 'gateio') return type === 'FUTURO' ? `https://www.gate.io/futures/USDT/${pair}`        : `https://www.gate.io/trade/${pair}`;
+        return '#';
+    }
+
+    function abrirPopups(url1, url2) {
+        const params = 'width=1280,height=900,menubar=yes,toolbar=yes,location=yes,status=yes,scrollbars=yes,resizable=yes';
+        window.open(url1, '_blank', params);
+        setTimeout(() => window.open(url2, '_blank', params), 100);
+    }
+
+    function fmtQe10(qe10) {
+        if (!qe10 && qe10 !== 0) return '0';
+        return qe10 >= 1 ? Math.floor(qe10).toString() : qe10.toFixed(4);
+    }
+
+    // ─── STATUS DAS EXCHANGES ────────────────────────────────────────────────────
+    const EXCHANGE_BADGE_IDS = {
+        bingx: { spot: 'ex-bingx-spot', fut: 'ex-bingx-fut' },
+        mexc:  { spot: 'ex-mexc-spot',  fut: 'ex-mexc-fut'  },
+    };
+
+    function updateExchangeStatus(status) {
+        if (!status) return;
+
+        const { streams = {}, circuit_breakers = {} } = status;
+
+        for (const [eid, types] of Object.entries(EXCHANGE_BADGE_IDS)) {
+            for (const [mtype, badgeId] of Object.entries(types)) {
+                const el = document.getElementById(badgeId);
+                if (!el) continue;
+
+                const cb       = circuit_breakers[eid] || {};
+                const hasData  = streams[mtype]?.[eid] ?? false;
+                const cbOpen   = cb.open   ?? false;
+                const failures = cb.failures ?? 0;
+
+                el.className = 'ex-badge';          // reset
+
+                if (cbOpen) {
+                    el.classList.add('error');
+                    el.title = `Circuit breaker aberto — ${failures} falhas consecutivas`;
+                    el.innerHTML = `<span class="ex-dot"></span>${eid.toUpperCase()} ${mtype.toUpperCase()} ⚠ CB`;
+                } else if (failures > 0) {
+                    el.classList.add('warn');
+                    el.title = `Reconectando... (${failures} falha${failures > 1 ? 's' : ''})`;
+                    el.innerHTML = `<span class="ex-dot"></span>${eid.toUpperCase()} ${mtype.toUpperCase()} ↻`;
+                } else if (hasData) {
+                    el.classList.add('ok');
+                    el.title = 'Stream ativo';
+                    el.innerHTML = `<span class="ex-dot"></span>${eid.toUpperCase()} ${mtype.toUpperCase()}`;
+                } else {
+                    el.classList.add('unknown');
+                    el.title = 'Aguardando dados...';
+                    el.innerHTML = `<span class="ex-dot"></span>${eid.toUpperCase()} ${mtype.toUpperCase()}`;
+                }
+            }
+        }
+    }
+
+    // ─── SOM POR SCORE ────────────────────────────────────────────────────────
+    function checkAlertsAndPlaySound(ccData, ffData) {
+        const minScore = parseFloat($('#min_score').val()) || 1.0;
+        const volume   = parseFloat($('#volume-control').val());
+        let shouldPlay = false;
+        let current    = new Set();
+
+        const process = (op, type) => {
+            if (op.score >= minScore && !hiddenItems.includes(op.moeda) && !mutedCoins.includes(op.moeda)) {
+                const id = `${op.moeda}-${type}`;
+                current.add(id);
+                if (!knownHighScores.has(id)) shouldPlay = true;
+            }
+        };
+
+        ccData.forEach(op => process(op, 'CC'));
+        ffData.forEach(op => process(op, 'FF'));
+
+        if (shouldPlay && volume > 0) playSoftLevelUp(volume);
+        knownHighScores = current;
+    }
+
+    // ─── ALERTAS VISUAIS ──────────────────────────────────────────────────────
+    function renderAlerts(ccData, ffData) {
+        const now          = Date.now();
+        const minScore     = parseFloat($('#min_score').val()) || 1.0;
+        $('#alert-limit-display').text(minScore);
+        const container    = $('#alerts-container');
+
+        // Expira entradas antigas
+        for (const key in alertsDisplayCache) {
+            if (now > alertsDisplayCache[key].expiresAt) delete alertsDisplayCache[key];
+        }
+
+        const processVisual = (op, typeLabel, typeClass, ex1, ex2, t1, t2) => {
+            if (hiddenItems.includes(op.moeda) || mutedCoins.includes(op.moeda)) return;
+            const id = `${op.moeda}-${typeLabel}`;
+            const above = op.score >= minScore;
+
+            if (above) {
+                alertsDisplayCache[id] = {
+                    ...op, typeLabel, typeClass, ex1, ex2, t1, t2,
+                    isCoolingDown: false,
+                    expiresAt: now + ALERT_STICKY_TIME_MS,
+                };
+            } else if (alertsDisplayCache[id]) {
+                alertsDisplayCache[id] = {
+                    ...alertsDisplayCache[id], ...op, typeLabel, typeClass, ex1, ex2, t1, t2,
+                    isCoolingDown: true,
+                };
+            }
+        };
+
+        ccData.forEach(op => processVisual(op, 'C&C', 'type-cc', op.compra,   op.venda,    'SPOT',   'FUTURO'));
+        ffData.forEach(op => processVisual(op, 'FxF', 'type-ff', op.long_ex,  op.short_ex, 'FUTURO', 'FUTURO'));
+
+        container.empty();
+        const sorted = Object.values(alertsDisplayCache).sort((a, b) => b.score - a.score);
+
+        if (sorted.length > 0) {
+            sorted.forEach(op => {
+                const link1 = getLink(op.ex1, op.moeda, op.t1);
+                const link2 = getLink(op.ex2, op.moeda, op.t2);
+                const spreadColor = op.spread_entrada >= 0 ? 'spread-good' : 'text-danger';
+                container.append(`
+                    <div class="alert-card ${op.typeClass} ${op.isCoolingDown ? 'cooling-down' : ''}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-white">${op.moeda}</span>
+                            <span class="badge badge-type fw-bold">${op.typeLabel}</span>
+                        </div>
+                        <div class="alert-score">${op.score.toFixed(2)}%</div>
+                        <div class="alert-text mb-2">
+                            Spread: <span class="${spreadColor}">${op.spread_entrada.toFixed(2)}%</span><br>
+                            ${op.ex1.toUpperCase()} ➔ ${op.ex2.toUpperCase()}<br>
+                            <span style="color:#8b949e;font-weight:bold;font-size:0.85rem;">
+                                <i class="ri-coins-line"></i> QE10: <span class="text-white">${fmtQe10(op.qe10)}</span>
+                            </span>
+                        </div>
+                        <button class="btn-alert-action" onclick="abrirPopups('${link1}','${link2}')">
+                            ABRIR <i class="ri-external-link-line"></i>
+                        </button>
+                    </div>
+                `);
+            });
+        } else {
+            container.html('<div class="empty-alerts-msg">Aguardando oportunidades...</div>');
+        }
+    }
+
+    // ─── DATATABLES ───────────────────────────────────────────────────────────
+    $(document).ready(function() {
+        loadFiltersFromCache();
+        sendFiltersToBackend();
+
+        $('#apply-filters').on('click', sendFiltersToBackend);
+        $('#reset-memory-btn').on('click', resetMemory);
+        $('#test-sound-btn').on('click', () => playSoftLevelUp(parseFloat($('#volume-control').val())));
+        $('#volume-control').on('change', saveFiltersToCache);
+
+        const fmtSpread = (data, type) => {
+            if (type !== 'display' && type !== 'filter') return data;
+            const cls = data >= 1.0 ? 'spread-good' : (data < 0 ? 'text-danger' : '');
+            return `<span class="${cls}">${parseFloat(data).toFixed(2)}%</span>`;
+        };
+        const fmtMax = (data, type) => type === 'display'
+            ? `<span class="spread-max">${parseFloat(data).toFixed(2)}%</span>` : data;
+        const fmtVol = (data, type) => {
+            if (type !== 'display') return data;
+            if (data >= 1_000_000) return (data / 1_000_000).toFixed(1) + 'M';
+            if (data >= 1_000)     return (data / 1_000).toFixed(0) + 'K';
+            return parseInt(data);
+        };
+        const fmtCount = (data, type) => type === 'display'
+            ? `<span class="alert-count-badge">${parseInt(data) || 0}</span>` : data;
+
+        const baseCfg = {
+            dom: 't', paging: false, info: false, order: [[3, 'desc']],
+            columnDefs: [
+                { targets: [3],    render: fmtSpread, className: 'dt-body-right' },
+                { targets: [4],    render: fmtMax,    className: 'dt-body-right' },
+                { targets: [5],    render: fmtSpread, className: 'dt-body-right' },
+                { targets: [6],    render: fmtMax,    className: 'dt-body-right' },
+                { targets: [7, 8], render: fmtVol,    className: 'dt-body-right' },
+                { targets: [-2],   render: fmtCount,  className: 'text-center'   },
+                { targets: -1,     orderable: false,  className: 'text-center'   },
+            ]
+        };
+
+        ccTable = $('#cc-table').DataTable(baseCfg);
+        ffTable = $('#ff-table').DataTable(baseCfg);
+
+        $('#search-cc').on('keyup', function() { ccTable.search(this.value).draw(); });
+        $('#search-ff').on('keyup', function() { ffTable.search(this.value).draw(); });
+
+        fetchData();
+        setInterval(fetchData, 500);
+    });
+
+    // ─── FETCH & RENDER ───────────────────────────────────────────────────────
+    async function fetchData() {
+        try {
+            // Busca dados e status em paralelo para não adicionar latência
+            const [resData, resStatus] = await Promise.all([
+                fetch(API_DATA_URL),
+                fetch(API_STATUS_URL).catch(() => null),   // status é opcional
+            ]);
+
+            const data = await resData.json();
+            const status = resStatus ? await resStatus.json().catch(() => null) : null;
+
+            checkAlertsAndPlaySound(data.cc_opportunities, data.ff_opportunities);
+            updateDashboard(data);
+            updateExchangeStatus(status);
+        } catch {
+            $('#header-status').html('<span class="text-danger">Offline</span>');
+            // Marca todas as exchanges como desconhecidas quando o backend está offline
+            Object.values(EXCHANGE_BADGE_IDS).forEach(types =>
+                Object.values(types).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.className = 'ex-badge error'; el.title = 'Backend offline'; }
+                })
+            );
+        }
+    }
+
+    function updateDashboard(data) {
+        $('#header-status').html(`
+            <span class="text-success fw-bold">Online</span>
+            <span class="mx-2 text-muted">|</span>
+            <i class="ri-speed-up-line" style="color:var(--v-teal)"></i> ${data.latency_seconds}s
+            <span class="mx-2 text-muted">|</span>
+            BTC: <b>$${data.btc_price}</b>
+        `);
+
+        renderAlerts(data.cc_opportunities, data.ff_opportunities);
+
+        const minSpreadVisual = parseFloat($('#min_spread').val()) || -50;
+
+        const filterFn = op => {
+            const isFav    = favorites.includes(op.moeda);
+            const isHidden = hiddenItems.includes(op.moeda);
+            if (activeTab === 'all')    return !isHidden && op.spread_entrada >= minSpreadVisual;
+            if (activeTab === 'fav')    return isFav && !isHidden;
+            if (activeTab === 'hidden') return isHidden;
+            return true;
+        };
+
+        const filteredCC = data.cc_opportunities.filter(filterFn);
+        const filteredFF = data.ff_opportunities.filter(filterFn);
+
+        // Renderiza linha CC
+        const renderCC = op => {
+            const isFav   = favorites.includes(op.moeda);
+            const favCls  = isFav ? 'ri-star-fill active' : 'ri-star-line';
+            const trashIco = activeTab === 'hidden' ? 'ri-refresh-line text-success' : 'ri-delete-bin-line';
+            const link1   = getLink(op.compra, op.moeda, 'SPOT');
+            const link2   = getLink(op.venda,  op.moeda, 'FUTURO');
+            const saque   = op.status_saque || '';
+            const saqueCls = (saque.includes('OK') || saque.includes('LIBERADO')) ? 'status-liberado' : 'status-suspenso';
+            return [
+                op.moeda,
+                op.compra.toUpperCase(),
+                op.venda.toUpperCase(),
+                op.spread_entrada,
+                op.spread_max_entrada,
+                op.spread_saida,
+                op.spread_max_saida,
+                op.vol_compra,
+                op.vol_venda,
+                `<span class="${saqueCls}">${saque}</span>`,
+                op.alert_count || 0,
+                `<div>
+                    <i class="${favCls} action-icon icon-fav" onclick="toggleFavorite('${op.moeda}')"></i>
+                    <i class="${trashIco} action-icon icon-trash" onclick="toggleHide('${op.moeda}')"></i>
+                    <i class="${mutedCoins.includes(op.moeda) ? 'ri-volume-mute-fill active' : 'ri-volume-up-line'} action-icon icon-mute" title="${mutedCoins.includes(op.moeda) ? 'Som silenciado' : 'Silenciar som'}" onclick="toggleMute('${op.moeda}')"></i>
+                    <button class="btn-open-sm ms-2" onclick="abrirPopups('${link1}','${link2}')">ABRIR</button>
+                </div>`
+            ];
+        };
+
+        // Renderiza linha FF
+        const renderFF = op => {
+            const isFav   = favorites.includes(op.moeda);
+            const favCls  = isFav ? 'ri-star-fill active' : 'ri-star-line';
+            const trashIco = activeTab === 'hidden' ? 'ri-refresh-line text-success' : 'ri-delete-bin-line';
+            const link1   = getLink(op.long_ex,  op.moeda, 'FUTURO');
+            const link2   = getLink(op.short_ex, op.moeda, 'FUTURO');
+            return [
+                op.moeda,
+                op.long_ex.toUpperCase(),
+                op.short_ex.toUpperCase(),
+                op.spread_entrada,
+                op.spread_max_entrada,
+                op.spread_saida,
+                op.spread_max_saida,
+                op.vol_long,
+                op.vol_short,
+                op.alert_count || 0,
+                `<div>
+                    <i class="${favCls} action-icon icon-fav" onclick="toggleFavorite('${op.moeda}')"></i>
+                    <i class="${trashIco} action-icon icon-trash" onclick="toggleHide('${op.moeda}')"></i>
+                    <i class="${mutedCoins.includes(op.moeda) ? 'ri-volume-mute-fill active' : 'ri-volume-up-line'} action-icon icon-mute" title="${mutedCoins.includes(op.moeda) ? 'Som silenciado' : 'Silenciar som'}" onclick="toggleMute('${op.moeda}')"></i>
+                    <button class="btn-open-sm ms-2" onclick="abrirPopups('${link1}','${link2}')">ABRIR</button>
+                </div>`
+            ];
+        };
+
+        ccTable.clear();
+        filteredCC.forEach(op => ccTable.row.add(renderCC(op)));
+        ccTable.draw();
+
+        ffTable.clear();
+        filteredFF.forEach(op => ffTable.row.add(renderFF(op)));
+        ffTable.draw();
+    }
+</script>
+</body>
+</html>
