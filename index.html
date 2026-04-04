@@ -162,6 +162,8 @@
             text-align: center; outline: none; transition: border-color 0.18s;
         }
         .filt-input:focus { border-color: var(--violet-hi); }
+        .filt-input-accent { border-color: var(--gold-dim) !important; }
+        .filt-input-accent:focus { border-color: var(--gold) !important; }
 
         .filt-sep { color: var(--seam-hi); font-size: 0.75rem; }
 
@@ -485,63 +487,61 @@
 <div class="container-fluid" id="main-app" style="display:none">
     
     <div class="arb-topbar">
-        <div class="arb-logo">
-            <div class="arb-logo-icon">🎯</div>
-            <div>
-                <div class="arb-logo-text">ARBSNIPER</div>
-                <div class="arb-logo-sub">Monitor de Arbitragem</div>
+        <div class="arb-wordmark">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="filter:drop-shadow(0 0 5px rgba(74,222,128,0.25)) drop-shadow(0 0 10px rgba(109,40,217,0.2));flex-shrink:0"><svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" stroke="#6d28d9" stroke-width="1"/><circle cx="18" cy="18" r="7" stroke="#4ade80" stroke-width="0.8"/><circle cx="18" cy="18" r="2" fill="#4ade80"/><line x1="1" y1="18" x2="11" y2="18" stroke="#4ade80" stroke-width="0.8"/><line x1="25" y1="18" x2="35" y2="18" stroke="#4ade80" stroke-width="0.8"/><line x1="18" y1="1" x2="18" y2="11" stroke="#4ade80" stroke-width="0.8"/><line x1="18" y1="25" x2="18" y2="35" stroke="#4ade80" stroke-width="0.8"/></svg></div>
+                <div>
+                    <div class="arb-wordmark-name">ARB<span>SNIPER</span></div>
+                    <div class="arb-wordmark-sub">Arbitrage Monitor</div>
+                </div>
             </div>
         </div>
         <div class="arb-topbar-right">
-            <div class="exchange-status-bar" id="exchange-status-bar">
-                <span class="lbl">Streams</span>
-                <span class="ex-badge unknown" id="ex-bingx-spot"><span class="ex-dot"></span>BX·S</span>
-                <span class="ex-badge unknown" id="ex-bingx-fut"><span class="ex-dot"></span>BX·F</span>
-                <span class="ex-badge unknown" id="ex-mexc-spot"><span class="ex-dot"></span>MX·S</span>
-                <span class="ex-badge unknown" id="ex-mexc-fut"><span class="ex-dot"></span>MX·F</span>
+            <div class="stream-cluster" id="exchange-status-bar">
+                <span class="stream-label">Streams</span>
+                <span class="ex-badge unknown" id="ex-bingx-spot"><span class="ex-dot"></span>BX-S</span>
+                <span class="ex-badge unknown" id="ex-bingx-fut"><span class="ex-dot"></span>BX-F</span>
+                <span class="ex-badge unknown" id="ex-mexc-spot"><span class="ex-dot"></span>MX-S</span>
+                <span class="ex-badge unknown" id="ex-mexc-fut"><span class="ex-dot"></span>MX-F</span>
             </div>
-            <div class="arb-status-pill" id="header-status-pill">
-                <span class="dot"></span>
-                <span id="header-status">Conectando...</span>
+            <div class="status-capsule" id="header-status-pill">
+                <span class="s-dot"></span>
+                <span id="header-status">Conectando</span>
             </div>
-            <button id="reset-memory-btn" class="arb-btn-sm arb-btn-danger" title="Limpar histórico">
-                <i class="ri-delete-bin-2-line"></i> Limpar
+            <button id="reset-memory-btn" class="ctrl-btn danger">
+                <i class="ri-delete-bin-line"></i> Limpar
             </button>
-            <button onclick="logout()" class="arb-btn-sm arb-btn-ghost" title="Sair">
-                <i class="ri-logout-box-line"></i> Sair
+            <button onclick="logout()" class="ctrl-btn">
+                <i class="ri-logout-box-r-line"></i> Sair
             </button>
         </div>
     </div>
 
-    <div class="filters-container">
-        <div class="filters-toolbar">
-            <div class="compact-input-group">
-                <label>Spread%</label>
-                <input type="number" step="0.01" id="min_spread" class="form-control form-control-sm" placeholder="Min">
-                <span class="separator">-</span>
-                <input type="number" step="1" id="max_spread" class="form-control form-control-sm" placeholder="Max">
+    <div class="filters-strip">
+            <div class="filt-group">
+                <span class="filt-label">Spread %</span>
+                <input type="number" step="0.01" id="min_spread" class="filt-input" placeholder="Mín">
+                <span class="filt-sep">/</span>
+                <input type="number" step="1"    id="max_spread" class="filt-input" placeholder="Máx">
             </div>
-            <div class="compact-input-group">
-                <label>Vol$</label>
-                <input type="number" id="min_volume" class="form-control form-control-sm" placeholder="Min">
-                <span class="separator">-</span>
-                <input type="number" id="max_volume" class="form-control form-control-sm" placeholder="Max" style="width: 90px !important;">
+            <div class="filt-group">
+                <span class="filt-label">Volume $</span>
+                <input type="number" id="min_volume" class="filt-input" placeholder="Mín">
+                <span class="filt-sep">/</span>
+                <input type="number" id="max_volume" class="filt-input" style="width:80px" placeholder="Máx">
             </div>
-            <div class="compact-input-group">
-                <label style="color: var(--gold)">Score</label>
-                <input type="number" step="0.01" id="min_score" class="form-control form-control-sm" style="border-color: var(--gold)" placeholder="Min">
+            <div class="filt-group">
+                <span class="filt-label accent">Score</span>
+                <input type="number" step="0.01" id="min_score" class="filt-input filt-input-accent" placeholder="Mín">
             </div>
-            <div class="sound-controls" title="Volume do Alerta">
-                <i class="ri-music-2-fill text-muted"></i>
-                <input type="range" id="volume-control" class="volume-slider" min="0" max="1" step="0.1" value="0.5">
-                <button id="test-sound-btn" class="btn-test-sound">Testar</button>
+            <div class="vol-bar">
+                <i class="ri-volume-down-line" style="color:var(--mist);font-size:0.85rem"></i>
+                <input type="range" id="volume-control" class="vol-slider" min="0" max="1" step="0.1" value="0.5">
+                <button id="test-sound-btn" class="sound-test-btn">Testar</button>
             </div>
-            <button id="apply-filters" class="ms-auto">
-                <i class="ri-equalizer-fill"></i> Aplicar
-            </button>
-            <span id="filter-status" class="small"></span>
+            <button id="apply-filters">Aplicar</button>
+            <span id="filter-status" style="font-size:0.68rem;color:var(--lime)"></span>
         </div>
-    </div>
 
     <div id="live-alerts-area">
         <div class="alerts-bar">
