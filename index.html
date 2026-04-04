@@ -318,6 +318,7 @@
     function logout() {
         localStorage.removeItem('viridis_token');
         authToken = null;
+        if (_fetchInterval) { clearInterval(_fetchInterval); _fetchInterval = null; }
         document.getElementById('login-overlay').style.display = 'flex';
         document.getElementById('main-app').style.display = 'none';
     }
@@ -377,9 +378,16 @@
         document.getElementById('main-app').style.display = 'none';
     }
 
+    let _fetchInterval = null;
+
     function showApp() {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
+        // Inicia o loop de dados só após autenticação confirmada
+        if (!_fetchInterval) {
+            fetchData();
+            _fetchInterval = setInterval(fetchData, 500);
+        }
     }
 
     const DEFAULT_FILTERS = {
@@ -769,10 +777,8 @@
         $('#search-cc').on('keyup', function() { ccTable.search(this.value).draw(); });
         $('#search-ff').on('keyup', function() { ffTable.search(this.value).draw(); });
 
-        // Verifica token ao carregar
+        // Verifica token ao carregar — fetchData só inicia após showApp()
         checkAuth();
-        fetchData();
-        setInterval(fetchData, 500);
     });
 
     // ─── FETCH & RENDER ───────────────────────────────────────────────────────
