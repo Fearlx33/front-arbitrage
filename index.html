@@ -166,7 +166,20 @@
 </head>
 <body>
 
-<div class="container-fluid">
+<!-- Tela de login -->
+<div class="login-overlay" id="login-overlay">
+    <div class="login-box">
+        <h4><i class="ri-radar-line"></i> Monitor <span style="color:var(--v-purple)">Viridis</span></h4>
+        <p>Faça login para acessar</p>
+        <input type="email"    id="login-email" class="login-input" placeholder="Email" autocomplete="email">
+        <input type="password" id="login-pass"  class="login-input" placeholder="Senha" autocomplete="current-password">
+        <button class="login-btn" id="login-btn" onclick="doLogin()">ENTRAR</button>
+        <div class="login-error" id="login-error"></div>
+        <div class="login-footer">Monitor Viridis — acesso restrito</div>
+    </div>
+</div>
+
+<div class="container-fluid" id="main-app" style="display:none">
     
     <div class="d-flex justify-content-between align-items-center py-3">
         <h4 class="mb-0 fw-bold" style="color: var(--v-green)">
@@ -278,7 +291,7 @@
     <div class="py-3 text-center text-muted" style="font-size: 0.75rem;">
         Monitor Arbitragem Viridis V4.0
     </div>
-</div>
+</div><!-- /main-app -->
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/2.0.7/js/dataTables.js"></script>
