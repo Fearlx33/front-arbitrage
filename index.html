@@ -184,6 +184,9 @@
             <button id="reset-memory-btn" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" title="Limpar histórico do backend">
                 <i class="ri-delete-bin-2-line"></i> <span class="d-none d-md-inline">Limpar Memória</span>
             </button>
+            <button onclick="logout()" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Sair">
+                <i class="ri-logout-box-line"></i> <span class="d-none d-md-inline">Sair</span>
+            </button>
             <div class="badge bg-dark border border-secondary p-2 text-white shadow-sm">
                 <span id="header-status">🔌 Conectando...</span>
             </div>
@@ -284,9 +287,92 @@
     // ─── CONFIG ───────────────────────────────────────────────────────────────
     const BASE            = 'https://web-production-e65d.up.railway.app';
     const API_DATA_URL    = `${BASE}/api/v1/arbitragem`;
+    const API_STATUS_URL  = `${BASE}/api/v1/status`;
     const API_FILTERS_URL = `${BASE}/api/v1/filtros`;
     const API_RESET_URL   = `${BASE}/api/v1/reset`;
-    const API_STATUS_URL  = `${BASE}/api/v1/status`;
+    const API_LOGIN_URL   = `${BASE}/api/v1/auth/login`;
+    const API_ME_URL      = `${BASE}/api/v1/auth/me`;
+
+    // ─── AUTH ─────────────────────────────────────────────────────────────────
+    let authToken = localStorage.getItem('viridis_token') || null;
+
+    function getHeaders(extra = {}) {
+        const h = { 'Content-Type': 'application/json', ...extra };
+        if (authToken) h['Authorization'] = `Bearer ${authToken}`;
+        return h;
+    }
+
+    function logout() {
+        localStorage.removeItem('viridis_token');
+        authToken = null;
+        document.getElementById('login-overlay').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+    }
+
+    async function doLogin() {
+        const email    = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-pass').value;
+        const btn      = document.getElementById('login-btn');
+        const errEl    = document.getElementById('login-error');
+
+        if (!email || !password) { errEl.innerText = 'Preencha email e senha.'; return; }
+
+        btn.disabled  = true;
+        btn.innerText = 'Entrando...';
+        errEl.innerText = '';
+
+        try {
+            const res = await fetch(API_LOGIN_URL, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ email, password })
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || 'Email ou senha incorretos');
+            }
+            const data = await res.json();
+            authToken  = data.token;
+            localStorage.setItem('viridis_token', authToken);
+            showApp();
+        } catch(e) {
+            errEl.innerText = e.message;
+        } finally {
+            btn.disabled  = false;
+            btn.innerText = 'ENTRAR';
+        }
+    }
+
+    // Enter no campo de senha faz login
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('login-pass')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+        document.getElementById('login-email')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('login-pass').focus();
+        });
+    });
+
+    async function checkAuth() {
+        if (!authToken) { showLogin(); return; }
+        try {
+            const res = await fetch(API_ME_URL, { headers: getHeaders() });
+            if (!res.ok) throw new Error('token inválido');
+            showApp();
+        } catch {
+            logout();
+        }
+    }
+
+    function showLogin() {
+        document.getElementById('login-overlay').style.display = 'flex';
+        document.getElementById('main-app').style.display = 'none';
+    }
+
+    function showApp() {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+    }
 
     const DEFAULT_FILTERS = {
         min_spread: 0.01, max_spread: 100.0,
@@ -394,7 +480,7 @@
         try {
             await fetch(API_FILTERS_URL, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify(payload)
             });
             $('#filter-status').html('<i class="ri-check-line text-success"></i>');
@@ -411,7 +497,7 @@
     async function resetMemory() {
         if (!confirm("Tem certeza? Isso apagará o histórico.")) return;
         try {
-            await fetch(API_RESET_URL, { method: 'POST' });
+            await fetch(API_RESET_URL, { method: 'POST', headers: getHeaders() });
             alert("Memória limpa!");
             fetchData();
         } catch(e) { alert("Erro de conexão."); }
@@ -675,6 +761,8 @@
         $('#search-cc').on('keyup', function() { ccTable.search(this.value).draw(); });
         $('#search-ff').on('keyup', function() { ffTable.search(this.value).draw(); });
 
+        // Verifica token ao carregar
+        checkAuth();
         fetchData();
         setInterval(fetchData, 500);
     });
@@ -682,13 +770,14 @@
     // ─── FETCH & RENDER ───────────────────────────────────────────────────────
     async function fetchData() {
         try {
-            // Busca dados e status em paralelo para não adicionar latência
             const [resData, resStatus] = await Promise.all([
-                fetch(API_DATA_URL),
-                fetch(API_STATUS_URL).catch(() => null),   // status é opcional
+                fetch(API_DATA_URL,   { headers: getHeaders() }),
+                fetch(API_STATUS_URL, { headers: getHeaders() }).catch(() => null),
             ]);
 
-            const data = await resData.json();
+            if (resData.status === 401) { logout(); return; }
+
+            const data   = await resData.json();
             const status = resStatus ? await resStatus.json().catch(() => null) : null;
 
             checkAlertsAndPlaySound(data.cc_opportunities, data.ff_opportunities);
