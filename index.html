@@ -368,13 +368,8 @@
 
     async function checkAuth() {
         if (!authToken) { showLogin(); return; }
-        try {
-            const res = await fetch(API_ME_URL, { headers: getHeaders() });
-            if (!res.ok) throw new Error('token inválido');
-            showApp();
-        } catch {
-            logout();
-        }
+        // Mostra o app imediatamente — o fetchData vai redirecionar para login se o token expirou
+        showApp();
     }
 
     function showLogin() {
