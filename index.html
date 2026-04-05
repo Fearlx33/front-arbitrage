@@ -462,6 +462,53 @@
         .login-error { color: #f87171; font-size: 0.68rem; text-align: center; margin-top: 10px; min-height: 16px; }
         .login-footer-txt { text-align: center; margin-top: 20px; font-size: 0.58rem; color: var(--seam-hi); letter-spacing: 0.15em; text-transform: uppercase; }
 
+        /* ── Q-Score bar + tooltip ── */
+        .qscore-wrap {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 2px; min-width: 60px; position: relative; cursor: default;
+        }
+        .qscore-top  { display: flex; align-items: baseline; gap: 3px; }
+        .qscore-val  { font-family: 'Syne', sans-serif; font-size: 0.78rem; font-weight: 700; line-height: 1; }
+        .qscore-max  { font-size: 0.55rem; color: var(--mist); }
+        .qscore-bar  { width: 100%; height: 3px; background: var(--seam); border-radius: 2px; overflow: hidden; }
+        .qscore-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+        .qs-none   .qscore-val  { color: var(--mist); }
+        .qs-none   .qscore-fill { background: var(--seam-hi); }
+        .qs-low    .qscore-val  { color: var(--violet-hi); }
+        .qs-low    .qscore-fill { background: var(--violet-hi); }
+        .qs-mid    .qscore-val  { color: var(--gold); }
+        .qs-mid    .qscore-fill { background: var(--gold); }
+        .qs-high   .qscore-val  { color: var(--lime); }
+        .qs-high   .qscore-fill { background: var(--lime); }
+
+        /* Tooltip Q-Score */
+        .qs-tooltip {
+            visibility: hidden; opacity: 0;
+            position: absolute; bottom: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink-4); border: 1px solid var(--seam-hi);
+            border-radius: 4px; padding: 8px 10px; white-space: nowrap;
+            z-index: 9999; pointer-events: none;
+            transition: opacity 0.15s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+        }
+        .qs-tooltip::after {
+            content: ''; position: absolute; top: 100%; left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: var(--seam-hi);
+        }
+        .qscore-wrap:hover .qs-tooltip { visibility: visible; opacity: 1; }
+        .qs-row {
+            display: flex; justify-content: space-between; gap: 16px;
+            font-size: 0.65rem; line-height: 1.8;
+        }
+        .qs-row-label { color: var(--mist); }
+        .qs-row-val   { color: var(--snow); font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+        .qs-row-val.pos { color: var(--lime); }
+        .qs-row-val.neg { color: #f87171; }
+        .qs-divider { border: none; border-top: 1px solid var(--seam); margin: 4px 0; }
+
         /* ═══════════════════════════════════════
            FOOTER
         ═══════════════════════════════════════ */
@@ -576,7 +623,7 @@
             <table id="cc-table" class="display table table-dark table-hover table-sm" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Moeda</th><th>Compra</th><th>Venda</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Compra</th><th>Vol Venda</th><th>Saque</th><th class="text-center">Alertas 24h</th><th class="text-center">Ações</th>
+                        <th>Moeda</th><th>Compra</th><th>Venda</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Compra</th><th>Vol Venda</th><th>Saque</th><th class="text-center">Q-Score</th><th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -593,7 +640,7 @@
             <table id="ff-table" class="display table table-dark table-hover table-sm" style="width:100%">
                 <thead>
                     <tr>
-                        <th>Moeda</th><th>Long</th><th>Short</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Long</th><th>Vol Short</th><th class="text-center">Alertas 24h</th><th class="text-center">Ações</th>
+                        <th>Moeda</th><th>Long</th><th>Short</th><th>Entrada</th><th>Max Ent</th><th>Saída</th><th>Max Sai</th><th>Vol Long</th><th>Vol Short</th><th class="text-center">Q-Score</th><th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -1066,8 +1113,36 @@
             if (data >= 1_000)     return (data / 1_000).toFixed(0) + 'K';
             return parseInt(data);
         };
-        const fmtCount = (data, type) => type === 'display'
-            ? `<span class="alert-count-badge">${parseInt(data) || 0}</span>` : data;
+        const fmtQScore = (data, type) => {
+            if (type !== 'display') return data;
+            // data = objeto {qscore, amp_media, spread_entrar, spread_sair}
+            // ou número legado
+            let v = 0, amp = 0, entrar = 0, sair = 0;
+            if (typeof data === 'object' && data !== null) {
+                v      = parseFloat(data.qscore)       || 0;
+                amp    = parseFloat(data.amp_media)     || 0;
+                entrar = parseFloat(data.spread_entrar) || 0;
+                sair   = parseFloat(data.spread_sair)   || 0;
+            } else {
+                v = parseFloat(data) || 0;
+            }
+            const cls  = v >= 80 ? 'qs-high' : v >= 50 ? 'qs-mid' : v >= 20 ? 'qs-low' : 'qs-none';
+            const pct  = Math.min(v, 100);
+            const sairCls = sair >= 0 ? 'pos' : 'neg';
+            return `<div class="qscore-wrap ${cls}">
+                <div class="qs-tooltip">
+                    <div class="qs-row"><span class="qs-row-label">Amp. Média</span><span class="qs-row-val pos">${amp.toFixed(2)}%</span></div>
+                    <hr class="qs-divider">
+                    <div class="qs-row"><span class="qs-row-label">Entrar em</span><span class="qs-row-val pos">${entrar.toFixed(2)}%</span></div>
+                    <div class="qs-row"><span class="qs-row-label">Sair em</span><span class="qs-row-val ${sairCls}">${sair.toFixed(2)}%</span></div>
+                </div>
+                <div class="qscore-top">
+                    <span class="qscore-val">${v.toFixed(0)}</span>
+                    <span class="qscore-max">/100</span>
+                </div>
+                <div class="qscore-bar"><div class="qscore-fill" style="width:${pct}%"></div></div>
+            </div>`;
+        };
 
         const baseCfg = {
             dom: 't', paging: false, info: false, order: [[3, 'desc']],
@@ -1077,7 +1152,7 @@
                 { targets: [5],    render: fmtSpread, className: 'dt-body-right' },
                 { targets: [6],    render: fmtMax,    className: 'dt-body-right' },
                 { targets: [7, 8], render: fmtVol,    className: 'dt-body-right' },
-                { targets: [-2],   render: fmtCount,  className: 'text-center'   },
+                { targets: [-2],   render: fmtQScore, className: 'text-center'   },
                 { targets: -1,     orderable: false,  className: 'text-center'   },
             ]
         };
@@ -1162,7 +1237,7 @@
                 op.vol_compra,
                 op.vol_venda,
                 `<span class="${saqueCls}">${saque}</span>`,
-                op.alert_count || 0,
+                { qscore: op.qscore || 0, amp_media: op.amp_media || 0, spread_entrar: op.spread_entrar || 0, spread_sair: op.spread_sair || 0 },
                 `<div>
                     <i class="${favCls} action-icon icon-fav" onclick="toggleFavorite('${op.moeda}')"></i>
                     <i class="${trashIco} action-icon icon-trash" onclick="toggleHide('${op.moeda}')"></i>
@@ -1189,7 +1264,7 @@
                 op.spread_max_saida,
                 op.vol_long,
                 op.vol_short,
-                op.alert_count || 0,
+                { qscore: op.qscore || 0, amp_media: op.amp_media || 0, spread_entrar: op.spread_entrar || 0, spread_sair: op.spread_sair || 0 },
                 `<div>
                     <i class="${favCls} action-icon icon-fav" onclick="toggleFavorite('${op.moeda}')"></i>
                     <i class="${trashIco} action-icon icon-trash" onclick="toggleHide('${op.moeda}')"></i>
